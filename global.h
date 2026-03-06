@@ -17,6 +17,8 @@ enum ErrorCodes {
 	EmailNotMatch = 1007,
 	PasswdUpFailed = 1008,
 	PasswdInvalid = 1009,
+	TokenInvalid = 1010,   //Token ß–ß
+	UidInvalid = 1011,  //uidŒﬁ–ß
 
 
 

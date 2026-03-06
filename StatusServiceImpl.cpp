@@ -87,6 +87,59 @@ Status StatusServiceImpl::GetChatServer(ServerContext* context,
     reply->set_port(server.port);
     reply->set_token(generateToken());
     reply->set_error(ErrorCodes::Success);
+    insertToken(request->uid(), reply->token());
 
     return Status::OK;
+}
+
+Status StatusServiceImpl::Login(ServerContext* context,
+    const LoginReq* request,
+    LoginRsp* reply)
+{
+    const int         uid = request->uid();
+    const std::string token = request->token();
+
+    // 空 token 快速拦截
+    if (token.empty()) {
+        std::cerr << "[StatusServiceImpl.cpp] Login [Login] token 为空，uid: " << uid << "\n";
+        reply->set_error(ErrorCodes::TokenInvalid);
+        return Status::OK;
+    }
+
+    // Login 只需要读 _tokens，用共享锁允许并发读
+    std::shared_lock<std::shared_mutex> lock(_token_mutex);
+
+    auto it = _tokens.find(uid);
+    if (it == _tokens.end()) {
+        std::cerr << "[StatusServiceImpl.cpp] Login [Login] uid 不存在: " << uid << "\n";
+        reply->set_error(ErrorCodes::UidInvalid);
+        return Status::OK;
+    }
+
+    if (it->second != token) {
+        std::cerr << "[StatusServiceImpl.cpp] Login [Login] token 不匹配，uid: " << uid << "\n";
+        reply->set_error(ErrorCodes::TokenInvalid);
+        return Status::OK;
+    }
+
+    std::cout << "[StatusServiceImpl.cpp] Login [Login] 登录成功，uid: " << uid << "\n";
+    reply->set_error(ErrorCodes::Success);
+    reply->set_uid(uid);
+    reply->set_token(token);
+    return Status::OK;
+}
+
+void StatusServiceImpl::insertToken(int uid, const std::string& token)
+{
+    // insertToken 是写操作，用独占锁
+    std::unique_lock<std::shared_mutex> lock(_token_mutex);
+
+    // insert_or_assign：存在则更新，不存在则插入，只做一次 map 查找
+    auto [it, inserted] = _tokens.insert_or_assign(uid, token);
+    if (inserted) {
+        std::cout << "[StatusServiceImpl.cpp] insertToken [insertToken] 新增 token，uid: " << uid << "\n";
+    }
+    else {
+        std::cout << "[StatusServiceImpl.cpp] insertToken [insertToken] 更新 token，uid: " << uid << "\n";
+    }
 }
