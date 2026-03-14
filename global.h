@@ -1,4 +1,4 @@
-// global.h
+﻿// global.h
 
 #pragma once
 //namespace beast = boost::beast;         // from <boost/beast.hpp>
@@ -17,8 +17,8 @@ enum ErrorCodes {
 	EmailNotMatch = 1007,
 	PasswdUpFailed = 1008,
 	PasswdInvalid = 1009,
-	TokenInvalid = 1010,   //TokenʧЧ
-	UidInvalid = 1011,  //uid��Ч
+	TokenInvalid = 1010,   //Token失效
+	UidInvalid = 1011,  //uid无效
 
 
 
