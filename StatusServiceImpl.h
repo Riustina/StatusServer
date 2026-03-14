@@ -1,4 +1,4 @@
-// StatusServiceImpl.h
+﻿// StatusServiceImpl.h
 
 #pragma once
 #include <grpcpp/grpcpp.h>
@@ -35,12 +35,14 @@ using message::StatusService;
 struct ChatServer {
     std::string host;
     std::string port;
+    std::string grpc_port;
     std::string server_id;
 };
 
 struct ChatServerNode {
     std::string host;
     std::string port;
+    std::string grpc_port;
     std::string server_id;
     bool online;
     std::chrono::steady_clock::time_point last_heartbeat;
@@ -50,6 +52,7 @@ struct UserRoute {
     std::string server_id;
     std::string host;
     std::string port;
+    std::string grpc_port;
 };
 
 class StatusServiceImpl final : public StatusService::Service
@@ -85,10 +88,12 @@ private:
     bool verifyTokenUnlocked(int uid, const std::string& token) const;
     ChatServer resolveServerIdentity(const std::string& server_id,
         const std::string& host,
-        const std::string& port) const;
+        const std::string& port,
+        const std::string& grpc_port) const;
     void upsertServerNode(const std::string& server_id,
         const std::string& host,
         const std::string& port,
+        const std::string& grpc_port,
         bool from_heartbeat);
     void HeartbeatCheckLoop();
     void CleanupExpiredServers();
