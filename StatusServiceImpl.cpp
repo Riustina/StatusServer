@@ -196,7 +196,6 @@ Status StatusServiceImpl::Heartbeat(ServerContext* context,
     const HeartbeatReq* request,
     HeartbeatRsp* reply)
 {
-    RequestLogScope log_scope;
     (void)context;
     upsertServerNode(request->server_id(), request->host(), request->port(), request->grpc_port(), true);
     reply->set_error(ErrorCodes::Success);
