@@ -16,6 +16,17 @@ namespace {
 constexpr auto kHeartbeatCheckInterval = std::chrono::seconds(1);
 constexpr auto kHeartbeatTimeout = std::chrono::seconds(10);
 
+struct RequestLogScope {
+    RequestLogScope()
+    {
+    }
+
+    ~RequestLogScope()
+    {
+        std::cout << "\n";
+    }
+};
+
 std::string generateToken()
 {
     boost::uuids::uuid uuid = boost::uuids::random_generator()();
@@ -96,6 +107,7 @@ Status StatusServiceImpl::GetChatServer(ServerContext* context,
     const GetChatServerReq* request,
     GetChatServerRsp* reply)
 {
+    RequestLogScope log_scope;
     (void)context;
 
     std::vector<ChatServer> online_servers;
@@ -138,6 +150,7 @@ Status StatusServiceImpl::Login(ServerContext* context,
     const LoginReq* request,
     LoginRsp* reply)
 {
+    RequestLogScope log_scope;
     (void)context;
     const int uid = request->uid();
     const std::string token = request->token();
@@ -172,6 +185,7 @@ Status StatusServiceImpl::RegisterChatServer(ServerContext* context,
     const RegisterChatServerReq* request,
     RegisterChatServerRsp* reply)
 {
+    RequestLogScope log_scope;
     (void)context;
     upsertServerNode(request->server_id(), request->host(), request->port(), request->grpc_port(), false);
     reply->set_error(ErrorCodes::Success);
@@ -182,6 +196,7 @@ Status StatusServiceImpl::Heartbeat(ServerContext* context,
     const HeartbeatReq* request,
     HeartbeatRsp* reply)
 {
+    RequestLogScope log_scope;
     (void)context;
     upsertServerNode(request->server_id(), request->host(), request->port(), request->grpc_port(), true);
     reply->set_error(ErrorCodes::Success);
@@ -193,6 +208,7 @@ Status StatusServiceImpl::ReportUserOnline(ServerContext* context,
     const ReportUserOnlineReq* request,
     ReportUserOnlineRsp* reply)
 {
+    RequestLogScope log_scope;
     (void)context;
     {
         std::shared_lock<std::shared_mutex> lock(_token_mutex);
@@ -243,6 +259,7 @@ Status StatusServiceImpl::ReportUserOffline(ServerContext* context,
     const ReportUserOfflineReq* request,
     ReportUserOfflineRsp* reply)
 {
+    RequestLogScope log_scope;
     (void)context;
 
     ChatServer resolved = resolveServerIdentity(request->server_id(), "", "", "");
@@ -271,6 +288,7 @@ Status StatusServiceImpl::QueryUserRoute(ServerContext* context,
     const QueryUserRouteReq* request,
     QueryUserRouteRsp* reply)
 {
+    RequestLogScope log_scope;
     (void)context;
     std::shared_lock<std::shared_mutex> lock(_route_mutex);
     auto it = _routes.find(request->uid());
