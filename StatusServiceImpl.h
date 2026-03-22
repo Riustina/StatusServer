@@ -35,6 +35,7 @@ using message::StatusService;
 struct ChatServer {
     std::string host;
     std::string port;
+    std::string grpc_host;
     std::string grpc_port;
     std::string server_id;
 };
@@ -42,6 +43,7 @@ struct ChatServer {
 struct ChatServerNode {
     std::string host;
     std::string port;
+    std::string grpc_host;
     std::string grpc_port;
     std::string server_id;
     bool online;
@@ -52,6 +54,7 @@ struct UserRoute {
     std::string server_id;
     std::string host;
     std::string port;
+    std::string grpc_host;
     std::string grpc_port;
 };
 
@@ -89,10 +92,12 @@ private:
     ChatServer resolveServerIdentity(const std::string& server_id,
         const std::string& host,
         const std::string& port,
+        const std::string& grpc_host,
         const std::string& grpc_port) const;
     void upsertServerNode(const std::string& server_id,
         const std::string& host,
         const std::string& port,
+        const std::string& grpc_host,
         const std::string& grpc_port,
         bool from_heartbeat);
     void HeartbeatCheckLoop();

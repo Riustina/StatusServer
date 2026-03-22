@@ -59,6 +59,7 @@ StatusServiceImpl::StatusServiceImpl()
         std::string section = "ChatServer" + std::to_string(i);
         std::string host = cfg[section]["host"];
         std::string port = cfg[section]["port"];
+        std::string grpc_host = cfg[section]["grpc_host"];
         std::string grpc_port = cfg[section]["grpc_port"];
 
         if (host.empty() || port.empty() || grpc_port.empty()) {
@@ -67,11 +68,16 @@ StatusServiceImpl::StatusServiceImpl()
             continue;
         }
 
-        ChatServer server{ host, port, grpc_port, buildServerId(host, port) };
+        if (grpc_host.empty()) {
+            grpc_host = host;
+        }
+
+        ChatServer server{ host, port, grpc_host, grpc_port, buildServerId(host, port) };
         _servers.push_back(server);
         _server_nodes[server.server_id] = ChatServerNode{
             server.host,
             server.port,
+            server.grpc_host,
             server.grpc_port,
             server.server_id,
             false,
@@ -81,6 +87,7 @@ StatusServiceImpl::StatusServiceImpl()
 
         std::cout << "[StatusServiceImpl.cpp] StatusServiceImpl [构造] 已加载 "
             << section << " -> " << server.server_id
+            << "，grpc_host: " << server.grpc_host
             << "，grpc_port: " << server.grpc_port
             << "，初始状态: offline\n";
     }
@@ -187,7 +194,7 @@ Status StatusServiceImpl::RegisterChatServer(ServerContext* context,
 {
     RequestLogScope log_scope;
     (void)context;
-    upsertServerNode(request->server_id(), request->host(), request->port(), request->grpc_port(), false);
+    upsertServerNode(request->server_id(), request->host(), request->port(), request->grpc_host(), request->grpc_port(), false);
     reply->set_error(ErrorCodes::Success);
     return Status::OK;
 }
@@ -197,7 +204,7 @@ Status StatusServiceImpl::Heartbeat(ServerContext* context,
     HeartbeatRsp* reply)
 {
     (void)context;
-    upsertServerNode(request->server_id(), request->host(), request->port(), request->grpc_port(), true);
+    upsertServerNode(request->server_id(), request->host(), request->port(), request->grpc_host(), request->grpc_port(), true);
     reply->set_error(ErrorCodes::Success);
     reply->set_online(true);
     return Status::OK;
@@ -219,7 +226,7 @@ Status StatusServiceImpl::ReportUserOnline(ServerContext* context,
         }
     }
 
-    ChatServer resolved = resolveServerIdentity(request->server_id(), request->host(), request->port(), "");
+    ChatServer resolved = resolveServerIdentity(request->server_id(), request->host(), request->port(), "", "");
 
     std::unique_lock<std::shared_mutex> server_lock(_server_mutex);
     auto server_it = _server_nodes.find(resolved.server_id);
@@ -234,6 +241,7 @@ Status StatusServiceImpl::ReportUserOnline(ServerContext* context,
     route.server_id = resolved.server_id;
     route.host = resolved.host;
     route.port = resolved.port;
+    route.grpc_host = resolved.grpc_host;
     route.grpc_port = resolved.grpc_port;
 
     std::unique_lock<std::shared_mutex> route_lock(_route_mutex);
@@ -261,7 +269,7 @@ Status StatusServiceImpl::ReportUserOffline(ServerContext* context,
     RequestLogScope log_scope;
     (void)context;
 
-    ChatServer resolved = resolveServerIdentity(request->server_id(), "", "", "");
+    ChatServer resolved = resolveServerIdentity(request->server_id(), "", "", "", "");
 
     std::unique_lock<std::shared_mutex> server_lock(_server_mutex);
     std::unique_lock<std::shared_mutex> route_lock(_route_mutex);
@@ -306,6 +314,7 @@ Status StatusServiceImpl::QueryUserRoute(ServerContext* context,
     reply->set_server_id(it->second.server_id);
     reply->set_host(it->second.host);
     reply->set_port(it->second.port);
+    reply->set_grpc_host(it->second.grpc_host);
     reply->set_grpc_port(it->second.grpc_port);
     return Status::OK;
 }
@@ -334,6 +343,7 @@ bool StatusServiceImpl::verifyTokenUnlocked(int uid, const std::string& token) c
 ChatServer StatusServiceImpl::resolveServerIdentity(const std::string& server_id,
     const std::string& host,
     const std::string& port,
+    const std::string& grpc_host,
     const std::string& grpc_port) const
 {
     if (!server_id.empty()) {
@@ -361,6 +371,7 @@ ChatServer StatusServiceImpl::resolveServerIdentity(const std::string& server_id
     ChatServer resolved;
     resolved.host = host;
     resolved.port = effective_port.empty() ? port : effective_port;
+    resolved.grpc_host = grpc_host;
     resolved.grpc_port = grpc_port;
     resolved.server_id = server_id.empty() ? buildServerId(host, resolved.port) : server_id;
     return resolved;
@@ -369,10 +380,11 @@ ChatServer StatusServiceImpl::resolveServerIdentity(const std::string& server_id
 void StatusServiceImpl::upsertServerNode(const std::string& server_id,
     const std::string& host,
     const std::string& port,
+    const std::string& grpc_host,
     const std::string& grpc_port,
     bool from_heartbeat)
 {
-    ChatServer resolved = resolveServerIdentity(server_id, host, port, grpc_port);
+    ChatServer resolved = resolveServerIdentity(server_id, host, port, grpc_host, grpc_port);
     const std::string real_server_id = resolved.server_id;
     if (real_server_id.empty()) {
         std::cerr << "[StatusServiceImpl.cpp] upsertServerNode [upsertServerNode] server_id 为空，忽略\n";
@@ -386,6 +398,7 @@ void StatusServiceImpl::upsertServerNode(const std::string& server_id,
     node.server_id = real_server_id;
     node.host = resolved.host;
     node.port = resolved.port;
+    node.grpc_host = resolved.grpc_host;
     node.grpc_port = resolved.grpc_port;
     node.online = true;
     node.last_heartbeat = std::chrono::steady_clock::now();
