@@ -36,6 +36,16 @@ find_package(jsoncpp CONFIG REQUIRED)
 find_package(hiredis CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
+if(TARGET JsonCpp::JsonCpp)
+    set(JSONCPP_LINK_TARGET JsonCpp::JsonCpp)
+elseif(TARGET jsoncpp_lib)
+    set(JSONCPP_LINK_TARGET jsoncpp_lib)
+elseif(TARGET jsoncpp_static)
+    set(JSONCPP_LINK_TARGET jsoncpp_static)
+else()
+    message(FATAL_ERROR "未找到可用的 JsonCpp CMake target。")
+endif()
+
 if(MYSQL_CONNECTOR_INCLUDE_DIR)
     set(_mysql_include_hints "${MYSQL_CONNECTOR_INCLUDE_DIR}")
 else()
@@ -113,7 +123,7 @@ target_link_libraries(StatusServer PRIVATE
     Boost::system
     protobuf::libprotobuf
     gRPC::grpc++
-    jsoncpp_lib
+    ${JSONCPP_LINK_TARGET}
     hiredis::hiredis
     Threads::Threads
     ${MYSQLCPPCONN_LIBRARY}
